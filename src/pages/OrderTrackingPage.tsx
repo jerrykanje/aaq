@@ -209,7 +209,9 @@ export const OrderTrackingPage: React.FC = () => {
     const status = orderData.status;
     if (!status || status === previousStatusRef.current) return;
 
-    if (status === 'ready_for_pickup') {
+    if (status === 'driver_assigned') {
+      soundManager.play('tostore');
+    } else if (status === 'ready_for_pickup') {
       const itemCount = (orderData.items || []).reduce(
         (total, item) => total + (item.quantity || 1),
         0

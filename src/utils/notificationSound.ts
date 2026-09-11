@@ -11,6 +11,7 @@ class SoundManager {
     this.sounds.closed = new Audio('/sounds/closed.mp3');
     this.sounds.stock = new Audio('/sounds/stock.mp3');
     this.sounds.store = new Audio('/sounds/store.mp3');
+    this.sounds.tostore = new Audio('/sounds/tostore.mp3');
     this.sounds.picked = new Audio('/sounds/picked.mp3');
     this.sounds.delivered = new Audio('/sounds/delivered.mp3');
 
@@ -36,7 +37,7 @@ class SoundManager {
     window.addEventListener('pointerdown', unlock, { once: true });
   }
 
-  play(name: 'message' | 'arrived' | 'accepted' | 'ready' | 'readyy' | 'closed' | 'stock' | 'store' | 'picked' | 'delivered') {
+  play(name: 'message' | 'arrived' | 'accepted' | 'ready' | 'readyy' | 'closed' | 'stock' | 'store' | 'tostore' | 'picked' | 'delivered') {
     const audio = this.sounds[name];
     if (!audio) return;
 
