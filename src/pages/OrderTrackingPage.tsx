@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, MapPin, Store, Package, Truck, User } from 'lucide-react';
+import { Check, MapPin, Store, Package, Truck, User, XCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { usePreventBack } from '../hooks/usePreventBack';
 import { db } from '../config/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { soundManager } from '../utils/notificationSound';
-import { isActiveOrderStatus as hasActiveOrderStatus } from '../services/orderService';
+import {
+  isActiveOrderStatus as hasActiveOrderStatus,
+  canCancelBeforeDriver,
+  cancelOrder,
+  updateOrderStatus,
+} from '../services/orderService';
 import { useGlobalCart } from '../contexts/GlobalCartContext';
 
 interface OrderItem {
@@ -161,8 +166,42 @@ export const OrderTrackingPage: React.FC = () => {
   const [preparingShown, setPreparingShown] = useState(false);
   const [rotatingMessage, setRotatingMessage] = useState('');
   const [messageIndex, setMessageIndex] = useState(0);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   usePreventBack(hasActiveOrderStatus(orderData.status));
+
+  const canCancel = canCancelBeforeDriver({
+    status: orderData.status as any,
+    driverId: orderData.driverId,
+  });
+
+  const handleCancelOrder = async () => {
+    if (!orderId || !canCancel || isCancelling) return;
+    const isPending = orderData.status === 'pending';
+    if (!isPending && !window.confirm('The delivery fee will be forfeited and only the item subtotal will be refunded. Continue?')) return;
+
+    setIsCancelling(true);
+    try {
+      if (isPending) {
+        await cancelOrder(orderId, 'Customer cancelled before driver assignment');
+        await updateOrderStatus(orderId, 'cancelled', {
+          refundAmount: (orderData.subtotal || 0) + (orderData.fee || 0),
+          refundEligible: true,
+        } as any);
+      } else {
+        await updateOrderStatus(orderId, 'cancelled_pending_refund', {
+          refundAmount: orderData.subtotal || 0,
+          refundEligible: true,
+          cancellationReason: 'Customer cancelled after order acceptance',
+        } as any);
+      }
+      navigate('/', { replace: true });
+    } catch (error) {
+      console.error('Error cancelling store order:', error);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
   
   // Refs for timeouts
   const preparingDelayRef = useRef<NodeJS.Timeout | null>(null);
@@ -597,8 +636,20 @@ export const OrderTrackingPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Delivery Address Panel */}
-        <motion.div
+          {canCancel && (
+            <button
+              type="button"
+              onClick={handleCancelOrder}
+              disabled={isCancelling}
+              className="mx-4 mb-3 flex w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+            >
+              <XCircle size={16} />
+              {isCancelling ? 'Cancelling…' : 'Cancel order'}
+            </button>
+          )}
+
+          {/* Delivery Address Panel */}
+          <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}

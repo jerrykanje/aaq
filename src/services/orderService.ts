@@ -1,4 +1,5 @@
 import { db } from '../config/firebase';
+import { apiPost } from '../config/api';
 import { 
   collection, 
   addDoc, 
@@ -422,13 +423,11 @@ export const canCancelBeforeDriver = (order: Pick<Order, 'status' | 'driverId'>)
 
 export async function updateOrderStops(
   orderId: string,
+  driverId: string,
   stops: OrderLocation[],
-  apply = false,
-): Promise<{ dryRun: boolean; stops: OrderLocation[] }> {
-  if (apply) {
-    await updateDoc(doc(db, 'orders', orderId), { stops, updatedAt: serverTimestamp() });
-  }
-  return { dryRun: !apply, stops };
+  dryRun = true,
+): Promise<{ dryRun: boolean; stops: OrderLocation[]; fare?: number; total?: number }> {
+  return apiPost('/updateOrderStops', { orderId, driverId, stops, dryRun });
 }
 
 /**
