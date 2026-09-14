@@ -664,15 +664,25 @@ export const OrderTrackingPage: React.FC = () => {
           )}
 
           <AnimatePresence>
-            {showCancellationPanel && (
-              <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 24 }}
-  className="flex max-h-[90vh] flex-col border-t border-gray-100 bg-white px-4 pb-4 pt-3 dark:border-gray-800 dark:bg-gray-900"
+{showCancellationPanel && (
+  <>
+  <motion.button
+  type="button"
+  aria-label="Close cancellation reasons"
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  exit={{ opacity: 0 }}
+  onClick={() => setShowCancellationPanel(false)}
+  className="fixed inset-0 z-40 bg-black/40"
+  />
+  <motion.div
+  initial={{ opacity: 0, y: 24 }}
+  animate={{ opacity: 1, y: 0 }}
+  exit={{ opacity: 0, y: 24 }}
+  className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80vh] flex-col overflow-y-auto rounded-t-2xl border-t border-gray-100 bg-white px-4 pb-4 pt-3 dark:border-gray-800 dark:bg-gray-900"
   role="dialog"
-                aria-labelledby="cancellation-panel-title"
-              >
+  aria-labelledby="cancellation-panel-title"
+  >
                 <div className="mb-3 flex items-center justify-between">
                   <h2 id="cancellation-panel-title" className="text-sm font-bold text-gray-900 dark:text-white">
                     Why are you cancelling?
@@ -716,10 +726,11 @@ export const OrderTrackingPage: React.FC = () => {
                   className="mt-3 flex w-full items-center justify-center rounded-xl bg-[#5B2EFF] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4b22df] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isCancelling ? 'Cancelling…' : 'Done'}
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+  </button>
+  </motion.div>
+  </>
+  )}
+  </AnimatePresence>
 
           {/* Delivery Address Panel */}
           <motion.div
