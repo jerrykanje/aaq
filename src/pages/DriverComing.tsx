@@ -12,6 +12,7 @@ import { usePreventBack } from '../hooks/usePreventBack';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useFirebaseRide } from '../hooks/useFirebaseRide';
 import { useMessageContext } from '../contexts/MessageContext';
+import { useOrderSession } from '../contexts/OrderSessionContext';
 import { auth, db } from '../config/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { listenToDriverLocation } from '../services/trackingService';
@@ -120,6 +121,7 @@ export const DriverComing: React.FC<DriverComingProps> = ({
   const [foodOrderDetails, setFoodOrderDetails] = useState<any>(null);
   const [serviceRequestDetails, setServiceRequestDetails] = useState<any>(null);
   const [firestoreRideData, setFirestoreRideData] = useState<any>(null);
+  usePreventBack(Boolean(orderId) && !['completed', 'cancelled', 'delivered'].includes(firestoreRideData?.status || orderData?.status));
   const gpsListenerRef = useRef<(() => void) | null>(null);
   const orderListenerRef = useRef<(() => void) | null>(null);
   // Guards setting driver info exactly once without putting driverInfo in the

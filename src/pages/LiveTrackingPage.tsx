@@ -148,6 +148,7 @@ export const LiveTrackingPage: React.FC = () => {
   const [statusTitle, setStatusTitle] = useState<string>('Driver is on the way');
   const [statusSubtitle, setStatusSubtitle] = useState<string>('Tracking your delivery');
   const [showRatingModal, setShowRatingModal] = useState<boolean>(false);
+  usePreventBack(orderData.status !== undefined && !['completed', 'cancelled', 'delivered'].includes(orderData.status));
   const [activePolyline, setActivePolyline] = useState<string | null>(null);
   const [trimmedPolyline, setTrimmedPolyline] = useState<string | null>(null);
   const fullPolylineRef = useRef<string | null>(null);

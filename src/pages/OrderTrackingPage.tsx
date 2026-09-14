@@ -160,6 +160,8 @@ export const OrderTrackingPage: React.FC = () => {
   const [preparingShown, setPreparingShown] = useState(false);
   const [rotatingMessage, setRotatingMessage] = useState('');
   const [messageIndex, setMessageIndex] = useState(0);
+
+  usePreventBack(isActiveOrderStatus(orderData.status));
   
   // Refs for timeouts
   const preparingDelayRef = useRef<NodeJS.Timeout | null>(null);

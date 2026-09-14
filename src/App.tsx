@@ -41,6 +41,7 @@ import { useUserProfile } from './hooks/useUserProfile';
 import { useFirebaseRide } from './hooks/useFirebaseRide';
 import { firebaseService } from './services/firebaseService';
 import { getETA } from './utils/etaCalculation';
+import { getRecentOrdersForUser, isActiveOrderStatus } from './services/orderService';
 
 interface AppState {
   selectedDestination: string;
@@ -70,6 +71,31 @@ function AppContent({ userId }: { userId: string }) {
   const [driverInfo, setDriverInfo] = useState<any>(null);
   const [eta, setEta] = useState('3 mins');
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const bootRecoveryRef = React.useRef(false);
+
+  useEffect(() => {
+    if (!userId || bootRecoveryRef.current) return;
+    bootRecoveryRef.current = true;
+
+    void getRecentOrdersForUser(userId, 20).then((orders) => {
+      const activeOrder = orders.find((order) => isActiveOrderStatus(order.status));
+      if (!activeOrder?.id) return;
+
+      const isStoreDelivery = activeOrder.workflowType === 'store_delivery' || activeOrder.category;
+      const driverAssigned = Boolean(activeOrder.driverId) || activeOrder.driverStatus === 'assigned';
+      const target = driverAssigned && isStoreDelivery
+        ? '/live-tracking'
+        : driverAssigned
+          ? '/driver-coming'
+          : '/order-tracking';
+
+      setAppState((prev) => ({ ...prev, currentRideId: activeOrder.id || null }));
+      localStorage.setItem('currentRideId', activeOrder.id);
+      navigate(target, { replace: true, state: { orderId: activeOrder.id, orderData: activeOrder, orderType: activeOrder.category || activeOrder.serviceType } });
+    }).catch((error) => {
+      console.error('Error restoring active order:', error);
+    });
+  }, [navigate, userId]);
 
   // Startup location permission, GPS detection, live position watching and
   // throttled reverse geocoding are now owned by the global LocationProvider

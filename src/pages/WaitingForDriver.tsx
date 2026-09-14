@@ -53,7 +53,7 @@ export const WaitingForDriver: React.FC<WaitingForDriverProps> = ({
   const isService = orderType === 'service' || isRideLikeService;
   const isRide = orderType === 'ride';
   const orderId = stateOrderId || requestId || currentRideId;
-  usePreventBack(Boolean(orderId));
+  usePreventBack(Boolean(orderId) && !['completed', 'cancelled', 'delivered'].includes((orderData as any)?.status));
 
   const finalDestination = isService ? (orderData.destinationAddress || orderData.destination) : (isFood ? orderData.destinationAddress : (orderData.destination || destination));
   const finalPickup = isService ? (orderData.pickupAddress || orderData.pickup) : (isFood ? orderData.pickupAddress : (orderData.pickup || pickup));
