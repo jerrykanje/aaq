@@ -7,18 +7,28 @@ import {
   onSnapshot, 
   serverTimestamp,
   Timestamp,
-  getDoc
+  getDoc,
+  getDocs
 } from 'firebase/firestore';
 
 // Order status types
 export type OrderStatus = 
   | 'pending'           // Just created, waiting for driver
   | 'accepted'          // Driver accepted
+  | 'preparing'
+  | 'ready_for_pickup'
+  | 'searching'
+  | 'driver_assigned'
   | 'arriving'          // Driver is on the way to pickup
   | 'arrived'           // Driver arrived at pickup
+  | 'at_store'
+  | 'picked_up'
+  | 'delivering'
   | 'in_progress'       // Trip/delivery in progress (NOT 'started')
   | 'completed'         // Order completed
-  | 'cancelled';        // Order cancelled
+  | 'cancelled'
+  | 'cancelled_pending_refund'
+  | 'rejected';        // Order cancelled or rejected
 
 // Service types supported (matches your exact specification)
 export type ServiceType = 
@@ -392,6 +402,35 @@ export async function getOrder(orderId: string): Promise<Order | null> {
   return { id: docSnap.id, ...docSnap.data() } as Order;
 }
 
+export async function getRecentOrdersForUser(userId: string, limit = 20): Promise<Order[]> {
+  const { query, where, orderBy, limit: limitBy } = await import('firebase/firestore');
+  const snapshot = await getDocs(query(
+    collection(db, 'orders'),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc'),
+    limitBy(limit),
+  ));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Order));
+}
+
+export const isActiveOrderStatus = (status?: string): boolean => Boolean(status && ![
+  'completed', 'cancelled', 'cancelled_pending_refund', 'rejected'
+].includes(status));
+
+export const canCancelBeforeDriver = (order: Pick<Order, 'status' | 'driverId'>): boolean =>
+  !order.driverId && ['pending', 'accepted', 'preparing', 'ready_for_pickup', 'searching'].includes(order.status);
+
+export async function updateOrderStops(
+  orderId: string,
+  stops: OrderLocation[],
+  apply = false,
+): Promise<{ dryRun: boolean; stops: OrderLocation[] }> {
+  if (apply) {
+    await updateDoc(doc(db, 'orders', orderId), { stops, updatedAt: serverTimestamp() });
+  }
+  return { dryRun: !apply, stops };
+}
+
 /**
  * Update order status
  */
@@ -470,7 +509,7 @@ export function getStatusDisplayText(status: OrderStatus, serviceType: ServiceTy
   const isTowing = serviceType === 'towing';
   const isTruck = serviceType === 'truck';
   
-  const statusText: Record<OrderStatus, string> = {
+  const statusText: Partial<Record<OrderStatus, string>> = {
     'pending': isDelivery ? 'Finding courier...' : isTowing ? 'Finding tow truck...' : isTruck ? 'Finding truck...' : 'Finding driver...',
     'accepted': isDelivery ? 'Courier accepted' : isTowing ? 'Tow truck assigned' : isTruck ? 'Truck assigned' : 'Driver accepted',
     'arriving': isDelivery ? 'Courier on the way' : isTowing ? 'Tow truck on the way' : isTruck ? 'Truck on the way' : 'Driver on the way',

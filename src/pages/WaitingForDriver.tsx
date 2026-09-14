@@ -4,6 +4,7 @@ import { MapLibreMap, MapMarker } from '../components/MapLibreMap';
 import { useFirebaseRide } from '../hooks/useFirebaseRide';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { usePreventBack } from '../hooks/usePreventBack';
 import { db } from '../config/firebase';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { subscribeToOrder, cancelOrder } from '../services/orderService';
@@ -52,6 +53,7 @@ export const WaitingForDriver: React.FC<WaitingForDriverProps> = ({
   const isService = orderType === 'service' || isRideLikeService;
   const isRide = orderType === 'ride';
   const orderId = stateOrderId || requestId || currentRideId;
+  usePreventBack(Boolean(orderId));
 
   const finalDestination = isService ? (orderData.destinationAddress || orderData.destination) : (isFood ? orderData.destinationAddress : (orderData.destination || destination));
   const finalPickup = isService ? (orderData.pickupAddress || orderData.pickup) : (isFood ? orderData.pickupAddress : (orderData.pickup || pickup));

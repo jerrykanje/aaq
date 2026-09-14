@@ -6,6 +6,7 @@ import { useUserProfile } from '../hooks/useUserProfile';
 import { useRideContext } from '../contexts/RideContext';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { usePreventBack } from '../hooks/usePreventBack';
 import { auth } from '../config/firebase';
 import {
   createOrder,
@@ -54,6 +55,7 @@ export const ConfirmOrder: React.FC<ConfirmOrderProps> = ({
   const { profile } = useUserProfile();
   const { isRideActive } = useRideContext();
   const { latitude, longitude } = useGeolocation();
+  usePreventBack(Boolean(location.state?.orderId) || isLoading);
 
   const {
     orderType = 'ride',

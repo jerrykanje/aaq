@@ -8,6 +8,7 @@ import { MessagePanel } from '../components/MessagePanel';
 import { RatingModal } from '../components/RatingModal';
 import { firebaseService } from '../services/firebaseService';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { usePreventBack } from '../hooks/usePreventBack';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useFirebaseRide } from '../hooks/useFirebaseRide';
 import { useMessageContext } from '../contexts/MessageContext';
