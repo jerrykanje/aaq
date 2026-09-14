@@ -324,7 +324,7 @@ function AppContent({ userId }: { userId: string }) {
                 path="/your-route"
                 element={
                   <PageTransition>
-                    {isRideActive() ? (
+                    {isRideActive() && !location.state?.returnToDriverComing ? (
                       <Dashboard onSearchSelect={() => alert('You already have an active ride.')} />
                     ) : (
                       <YourRoute onRouteComplete={handleRouteComplete} />

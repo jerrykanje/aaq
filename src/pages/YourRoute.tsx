@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { MapLibreMap, MapMarker } from '../components/MapLibreMap';
 import { ScrollableSection } from '../components/ScrollableSection';
 import { useGeolocation } from '../hooks/useGeolocation';
+import { useOrderSession } from '../contexts/OrderSessionContext';
 import { 
   searchAddresses, 
   getRecentAddresses, 
@@ -23,6 +24,7 @@ export const YourRoute: React.FC<YourRouteProps> = ({ onRouteComplete }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { address: currentLocation, loading: locationLoading, latitude: geoLat, longitude: geoLng } = useGeolocation();
+  const { orderSession, setOrderSession } = useOrderSession();
 
   const serviceType: ServiceType = location.state?.serviceType || 'ride';
 
@@ -250,6 +252,29 @@ export const YourRoute: React.FC<YourRouteProps> = ({ onRouteComplete }) => {
     }
 
     setSearchQuery('');
+
+    if (location.state?.returnToDriverComing && typeof activeField === 'number') {
+      setOrderSession({
+        ...orderSession,
+        foodiesRoute: {
+          ...orderSession.foodiesRoute,
+          stops: newStops.filter(Boolean).map((stop, index) => ({
+            id: `stop-${index}`,
+            address: {
+              place_id: `stop-${index}`,
+              description: stop,
+              geometry: { location: newStopCoords[index] || { lat: 0, lng: 0 } }
+            },
+            assignedFoodIds: []
+          }))
+        }
+      });
+      navigate('/driver-coming', {
+        replace: true,
+        state: { ...location.state, updatedStops: newStops.filter(Boolean) }
+      });
+      return;
+    }
 
     const checkFieldsFilled = (): boolean => {
       const hasPickup = newPickup && newPickup.trim() !== '';

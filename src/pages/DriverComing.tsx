@@ -21,6 +21,7 @@ import { soundManager } from '../utils/notificationSound';
 import { 
   subscribeToOrder, 
   cancelOrder, 
+  updateOrderStops,
   Order, 
   OrderStatus
 } from '../services/orderService';
@@ -92,6 +93,7 @@ export const DriverComing: React.FC<DriverComingProps> = ({
   const { profile } = useUserProfile(auth.currentUser?.uid);
   const { currentRide } = useFirebaseRide(currentRideId);
   const { unreadMessageCount, markMessagesAsRead } = useMessageContext();
+  const { orderSession, setOrderSession } = useOrderSession();
 
   const { 
     orderType = 'ride', 
@@ -121,6 +123,9 @@ export const DriverComing: React.FC<DriverComingProps> = ({
   const [foodOrderDetails, setFoodOrderDetails] = useState<any>(null);
   const [serviceRequestDetails, setServiceRequestDetails] = useState<any>(null);
   const [firestoreRideData, setFirestoreRideData] = useState<any>(null);
+  const [farePreview, setFarePreview] = useState<number | null>(null);
+  const [showStopFareConfirmation, setShowStopFareConfirmation] = useState(false);
+  const [isUpdatingStops, setIsUpdatingStops] = useState(false);
   usePreventBack(Boolean(orderId) && !['completed', 'cancelled', 'delivered'].includes(firestoreRideData?.status || orderData?.status));
   const gpsListenerRef = useRef<(() => void) | null>(null);
   const orderListenerRef = useRef<(() => void) | null>(null);
@@ -367,6 +372,85 @@ export const DriverComing: React.FC<DriverComingProps> = ({
 
   const handleCancelClick = () => setShowCancelConfirmation(true);
   const handleWaitForDriver = () => setShowCancelConfirmation(false);
+
+  const toSessionAddress = (address: string, index: number) => ({
+    place_id: `order-${orderId || 'active'}-${index}`,
+    description: address,
+    geometry: { location: { lat: 0, lng: 0 } }
+  });
+
+  const handleAddStop = () => {
+    const activeOrderId = orderId || currentRide?.id || currentRideId;
+    if (!activeOrderId) return;
+
+    setOrderSession({
+      orderId: activeOrderId,
+      cartItems: orderSession.cartItems,
+      foodiesRoute: {
+        primaryLocation: toSessionAddress(finalPickup, 0),
+        stops: finalStops.map((stop: string, index: number) => ({
+          id: `stop-${index}`,
+          address: toSessionAddress(stop, index + 1),
+          assignedFoodIds: []
+        }))
+      }
+    });
+
+    navigate('/your-route', {
+      state: {
+        serviceType: 'ride',
+        orderId: activeOrderId,
+        returnToDriverComing: true,
+        prefilledPickup: finalPickup,
+        prefilledDestination: finalDestination,
+        prefilledStops: finalStops,
+        highlightAddStop: true
+      }
+    });
+  };
+
+  const handleConfirmStopUpdate = async () => {
+    const activeOrderId = orderId || currentRide?.id || currentRideId;
+    const driverId = (firestoreRideData as any)?.driverId || (currentRide as any)?.driverId;
+    const updatedStops = (location.state?.updatedStops || finalStops) as string[];
+    if (!activeOrderId || !driverId || updatedStops.length === 0) return;
+
+    setIsUpdatingStops(true);
+    try {
+      await updateOrderStops(activeOrderId, driverId, updatedStops.map((address, index) => ({
+        address,
+        lat: 0,
+        lng: 0,
+        placeId: `stop-${index}`
+      })), false);
+      setShowStopFareConfirmation(false);
+      navigate('/driver-coming', { replace: true, state: { ...location.state, updatedStops: undefined } });
+    } finally {
+      setIsUpdatingStops(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!location.state?.returnToDriverComing || !location.state?.updatedStops) return;
+
+    const activeOrderId = orderId || currentRide?.id || currentRideId;
+    const driverId = (firestoreRideData as any)?.driverId || (currentRide as any)?.driverId;
+    if (!activeOrderId || !driverId) return;
+
+    let cancelled = false;
+    void updateOrderStops(activeOrderId, driverId, location.state.updatedStops.map((address: string, index: number) => ({
+      address,
+      lat: 0,
+      lng: 0,
+      placeId: `stop-${index}`
+    })), true).then((result) => {
+      if (cancelled) return;
+      setFarePreview(result.fare ?? result.total ?? finalPrice);
+      setShowStopFareConfirmation(true);
+    }).catch((error) => console.error('Error previewing stop fare:', error));
+
+    return () => { cancelled = true; };
+  }, [location.state, orderId, currentRide?.id, currentRideId, firestoreRideData, finalPrice]);
 
   const handleConfirmCancel = async () => {
     try {
@@ -684,10 +768,14 @@ export const DriverComing: React.FC<DriverComingProps> = ({
                         </div>
                       ))}
 
-                      <div className="flex items-center space-x-3 ml-6">
+                      <button
+                        type="button"
+                        onClick={handleAddStop}
+                        className="flex items-center space-x-3 ml-6 rounded-lg px-2 py-1 text-left hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                      >
                         <Plus className="text-[#5B2EFF]" size={16} />
                         <span className="text-[#5B2EFF] font-medium">Add stop</span>
-                      </div>
+                      </button>
 
                       <div className="flex items-center space-x-3">
                         <MapPin className="text-[#5B2EFF]" size={12} />
@@ -718,6 +806,21 @@ export const DriverComing: React.FC<DriverComingProps> = ({
           </ScrollableSection>
         </div>
       </DraggablePanel>
+
+      <AnimatePresence>
+        {showStopFareConfirmation && (
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="w-full max-w-sm rounded-3xl bg-white p-6 dark:bg-gray-900" initial={{ scale: 0.9 }} animate={{ scale: 1 }}>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Confirm stop</h3>
+              <p className="mt-3 text-gray-600 dark:text-gray-300">Adding this stop changes your fare to K{farePreview ?? finalPrice} — confirm?</p>
+              <div className="mt-6 flex gap-3">
+                <button type="button" onClick={() => setShowStopFareConfirmation(false)} className="flex-1 rounded-xl bg-gray-100 px-4 py-3 font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">Cancel</button>
+                <button type="button" disabled={isUpdatingStops} onClick={handleConfirmStopUpdate} className="flex-1 rounded-xl bg-[#5B2EFF] px-4 py-3 font-semibold text-white disabled:opacity-50">{isUpdatingStops ? 'Saving...' : 'Confirm'}</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Cancel Confirmation Modal */}
       <AnimatePresence>
