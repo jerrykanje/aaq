@@ -167,6 +167,17 @@ export const OrderTrackingPage: React.FC = () => {
   const [rotatingMessage, setRotatingMessage] = useState('');
   const [messageIndex, setMessageIndex] = useState(0);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancellationPanel, setShowCancellationPanel] = useState(false);
+  const [selectedCancellationReason, setSelectedCancellationReason] = useState('');
+
+  const cancellationReasons = [
+    'Order is taking too long',
+    'Ordered by mistake',
+    'Changed my mind',
+    'Found it cheaper elsewhere',
+    'Entered the wrong address',
+    'Other',
+  ];
 
   usePreventBack(hasActiveOrderStatus(orderData.status));
 
@@ -176,23 +187,24 @@ export const OrderTrackingPage: React.FC = () => {
   });
 
   const handleCancelOrder = async () => {
-    if (!orderId || !canCancel || isCancelling) return;
+    if (!orderId || !canCancel || isCancelling || !selectedCancellationReason) return;
     const isPending = orderData.status === 'pending';
     if (!isPending && !window.confirm('The delivery fee will be forfeited and only the item subtotal will be refunded. Continue?')) return;
 
     setIsCancelling(true);
     try {
       if (isPending) {
-        await cancelOrder(orderId, 'Customer cancelled before driver assignment');
+        await cancelOrder(orderId, selectedCancellationReason);
         await updateOrderStatus(orderId, 'cancelled', {
           refundAmount: (orderData.subtotal || 0) + (orderData.fee || 0),
           refundEligible: true,
+          cancellationReason: selectedCancellationReason,
         } as any);
       } else {
-        await updateOrderStatus(orderId, 'cancelled_pending_refund', {
+          await updateOrderStatus(orderId, 'cancelled_pending_refund', {
           refundAmount: orderData.subtotal || 0,
           refundEligible: true,
-          cancellationReason: 'Customer cancelled after order acceptance',
+          cancellationReason: selectedCancellationReason,
         } as any);
       }
       navigate('/', { replace: true });
@@ -639,14 +651,73 @@ export const OrderTrackingPage: React.FC = () => {
           {canCancel && (
             <button
               type="button"
-              onClick={handleCancelOrder}
+              onClick={() => {
+                setSelectedCancellationReason('');
+                setShowCancellationPanel(true);
+              }}
               disabled={isCancelling}
               className="mx-4 mb-3 flex w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
             >
               <XCircle size={16} />
-              {isCancelling ? 'Cancelling…' : 'Cancel order'}
+              Cancel order
             </button>
           )}
+
+          <AnimatePresence>
+            {showCancellationPanel && (
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 24 }}
+                className="border-t border-gray-100 bg-white px-4 pb-4 pt-3 dark:border-gray-800 dark:bg-gray-900"
+                role="dialog"
+                aria-labelledby="cancellation-panel-title"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 id="cancellation-panel-title" className="text-sm font-bold text-gray-900 dark:text-white">
+                    Why are you cancelling?
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setShowCancellationPanel(false)}
+                    className="rounded-full p-1 text-gray-500 transition hover:bg-gray-100 dark:hover:bg-gray-800"
+                    aria-label="Close cancellation reasons"
+                  >
+                    <XCircle size={18} />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {cancellationReasons.map((reason) => {
+                    const isSelected = selectedCancellationReason === reason;
+                    return (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => setSelectedCancellationReason(reason)}
+                        aria-pressed={isSelected}
+                        className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${
+                          isSelected
+                            ? 'bg-[#F3EEFF] font-semibold text-[#5B2EFF]'
+                            : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        <span>{reason}</span>
+                        {isSelected && <Check size={16} aria-hidden="true" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCancelOrder}
+                  disabled={!selectedCancellationReason || isCancelling}
+                  className="mt-3 flex w-full items-center justify-center rounded-xl bg-[#5B2EFF] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4b22df] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {isCancelling ? 'Cancelling…' : 'Done'}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Delivery Address Panel */}
           <motion.div
