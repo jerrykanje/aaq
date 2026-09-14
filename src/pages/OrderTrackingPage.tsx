@@ -669,8 +669,8 @@ export const OrderTrackingPage: React.FC = () => {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 24 }}
-                className="border-t border-gray-100 bg-white px-4 pb-4 pt-3 dark:border-gray-800 dark:bg-gray-900"
-                role="dialog"
+  className="flex max-h-[90vh] flex-col border-t border-gray-100 bg-white px-4 pb-4 pt-3 dark:border-gray-800 dark:bg-gray-900"
+  role="dialog"
                 aria-labelledby="cancellation-panel-title"
               >
                 <div className="mb-3 flex items-center justify-between">
@@ -686,8 +686,9 @@ export const OrderTrackingPage: React.FC = () => {
                     <XCircle size={18} />
                   </button>
                 </div>
-                <div className="flex flex-col gap-1">
-                  {cancellationReasons.map((reason) => {
+  <div className="max-h-[min(42vh,250px)] overflow-y-auto overscroll-contain pr-1">
+  <div className="flex flex-col gap-1">
+  {cancellationReasons.map((reason) => {
                     const isSelected = selectedCancellationReason === reason;
                     return (
                       <button
@@ -706,6 +707,7 @@ export const OrderTrackingPage: React.FC = () => {
                       </button>
                     );
                   })}
+                </div>
                 </div>
                 <button
                   type="button"
