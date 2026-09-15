@@ -426,9 +426,10 @@ export async function updateOrderStops(
   driverId: string,
   stops: OrderLocation[],
   dryRun = true,
-): Promise<{ dryRun: boolean; stops: OrderLocation[]; fare?: number; total?: number }> {
-  return apiPost('/updateOrderStops', { orderId, driverId, stops, dryRun });
-}
+  ): Promise<{ dryRun: boolean; stops: OrderLocation[]; fare?: number; total?: number; distanceKm?: number; durationMinutes?: number; polyline?: string; pricingCategory?: string }> {
+  const response = await apiPost<{ success: boolean; data: { dryRun: boolean; stops: OrderLocation[]; fare?: number; total?: number; distanceKm?: number; durationMinutes?: number; polyline?: string; pricingCategory?: string } }>('/updateOrderStops', { orderId, driverId, stops, dryRun });
+  return response.data;
+  }
 
 /**
  * Update order status

@@ -373,11 +373,17 @@ export const DriverComing: React.FC<DriverComingProps> = ({
   const handleCancelClick = () => setShowCancelConfirmation(true);
   const handleWaitForDriver = () => setShowCancelConfirmation(false);
 
-  const toSessionAddress = (address: string, index: number) => ({
+  const toSessionAddress = (address: string, index: number, coords?: { lat: number; lng: number } | null) => ({
     place_id: `order-${orderId || 'active'}-${index}`,
     description: address,
-    geometry: { location: { lat: 0, lng: 0 } }
+    geometry: { location: coords || { lat: 0, lng: 0 } }
   });
+
+  const getOrderCoords = (location: any) => {
+    if (location?.lat && location?.lng) return { lat: location.lat, lng: location.lng };
+    if (location?.geometry?.location) return location.geometry.location;
+    return null;
+  };
 
   const handleAddStop = () => {
     const activeOrderId = orderId || currentRide?.id || currentRideId;
@@ -387,10 +393,10 @@ export const DriverComing: React.FC<DriverComingProps> = ({
       orderId: activeOrderId,
       cartItems: orderSession.cartItems,
       foodiesRoute: {
-        primaryLocation: toSessionAddress(finalPickup, 0),
-        stops: finalStops.map((stop: string, index: number) => ({
+        primaryLocation: toSessionAddress(finalPickup, 0, getOrderCoords(orderData.pickup || orderData.pickupLocation)),
+        stops: finalStops.map((stop: any, index: number) => ({
           id: `stop-${index}`,
-          address: toSessionAddress(stop, index + 1),
+          address: toSessionAddress(typeof stop === 'string' ? stop : stop.address, index + 1, getOrderCoords(stop)),
           assignedFoodIds: []
         }))
       }
@@ -413,15 +419,16 @@ export const DriverComing: React.FC<DriverComingProps> = ({
     const activeOrderId = orderId || currentRide?.id || currentRideId;
     const driverId = (firestoreRideData as any)?.driverId || (currentRide as any)?.driverId;
     const updatedStops = (location.state?.updatedStops || finalStops) as string[];
+    const updatedStopLocations = (location.state?.updatedStopLocations || []) as Array<{ lat: number; lng: number; placeId?: string }>;
     if (!activeOrderId || !driverId || updatedStops.length === 0) return;
 
     setIsUpdatingStops(true);
     try {
       await updateOrderStops(activeOrderId, driverId, updatedStops.map((address, index) => ({
         address,
-        lat: 0,
-        lng: 0,
-        placeId: `stop-${index}`
+        lat: updatedStopLocations[index]?.lat,
+        lng: updatedStopLocations[index]?.lng,
+        placeId: updatedStopLocations[index]?.placeId || `stop-${index}`
       })), false);
       setShowStopFareConfirmation(false);
       navigate('/driver-coming', { replace: true, state: { ...location.state, updatedStops: undefined } });
@@ -438,11 +445,12 @@ export const DriverComing: React.FC<DriverComingProps> = ({
     if (!activeOrderId || !driverId) return;
 
     let cancelled = false;
+    const updatedStopLocations = (location.state.updatedStopLocations || []) as Array<{ lat: number; lng: number; placeId?: string }>;
     void updateOrderStops(activeOrderId, driverId, location.state.updatedStops.map((address: string, index: number) => ({
       address,
-      lat: 0,
-      lng: 0,
-      placeId: `stop-${index}`
+      lat: updatedStopLocations[index]?.lat,
+      lng: updatedStopLocations[index]?.lng,
+      placeId: updatedStopLocations[index]?.placeId || `stop-${index}`
     })), true).then((result) => {
       if (cancelled) return;
       setFarePreview(result.fare ?? result.total ?? finalPrice);

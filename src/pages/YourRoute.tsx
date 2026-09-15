@@ -271,7 +271,11 @@ export const YourRoute: React.FC<YourRouteProps> = ({ onRouteComplete }) => {
       });
       navigate('/driver-coming', {
         replace: true,
-        state: { ...location.state, updatedStops: newStops.filter(Boolean) }
+        state: {
+          ...location.state,
+          updatedStops: newStops.filter(Boolean),
+          updatedStopLocations: newStops.filter(Boolean).map((_, index) => newStopCoords[index]).filter(Boolean)
+        }
       });
       return;
     }
