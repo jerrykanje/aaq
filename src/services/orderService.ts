@@ -427,8 +427,13 @@ export async function updateOrderStops(
   stops: OrderLocation[],
   dryRun = true,
   ): Promise<{ dryRun: boolean; stops: OrderLocation[]; fare?: number; total?: number; distanceKm?: number; durationMinutes?: number; polyline?: string; pricingCategory?: string }> {
-  const response = await apiPost<{ success: boolean; data: { dryRun: boolean; stops: OrderLocation[]; fare?: number; total?: number; distanceKm?: number; durationMinutes?: number; polyline?: string; pricingCategory?: string } }>('/updateOrderStops', { orderId, driverId, stops, dryRun });
-  return response.data;
+  const response = await apiPost<{ success?: boolean; data?: { dryRun: boolean; stops: OrderLocation[]; fare?: number | string; total?: number | string; distanceKm?: number; durationMinutes?: number; polyline?: string; pricingCategory?: string }; dryRun?: boolean; stops?: OrderLocation[]; fare?: number | string; total?: number | string }>('/updateOrderStops', { orderId, driverId, stops, dryRun });
+  const data = response?.data ?? response;
+  return {
+    ...data,
+    fare: data?.fare != null ? Number(data.fare) : undefined,
+    total: data?.total != null ? Number(data.total) : undefined,
+  };
   }
 
 /**

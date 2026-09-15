@@ -453,7 +453,11 @@ export const DriverComing: React.FC<DriverComingProps> = ({
       placeId: updatedStopLocations[index]?.placeId || `stop-${index}`
     })), true).then((result) => {
       if (cancelled) return;
-      setFarePreview(result.fare ?? result.total ?? finalPrice);
+      const recalculatedFare = result.fare ?? result.total;
+      if (recalculatedFare == null || Number.isNaN(Number(recalculatedFare))) {
+        throw new Error('The fare preview did not include a recalculated fare.');
+      }
+      setFarePreview(Number(recalculatedFare));
       setShowStopFareConfirmation(true);
     }).catch((error) => console.error('Error previewing stop fare:', error));
 
@@ -820,7 +824,7 @@ export const DriverComing: React.FC<DriverComingProps> = ({
           <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div className="w-full max-w-sm rounded-3xl bg-white p-6 dark:bg-gray-900" initial={{ scale: 0.9 }} animate={{ scale: 1 }}>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Confirm stop</h3>
-              <p className="mt-3 text-gray-600 dark:text-gray-300">Adding this stop changes your fare to K{farePreview ?? finalPrice} — confirm?</p>
+              <p className="mt-3 text-gray-600 dark:text-gray-300">Adding this stop changes your fare to K {farePreview != null ? farePreview.toFixed(2) : '—'} — confirm?</p>
               <div className="mt-6 flex gap-3">
                 <button type="button" onClick={() => setShowStopFareConfirmation(false)} className="flex-1 rounded-xl bg-gray-100 px-4 py-3 font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">Cancel</button>
                 <button type="button" disabled={isUpdatingStops} onClick={handleConfirmStopUpdate} className="flex-1 rounded-xl bg-[#5B2EFF] px-4 py-3 font-semibold text-white disabled:opacity-50">{isUpdatingStops ? 'Saving...' : 'Confirm'}</button>
