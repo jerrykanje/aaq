@@ -133,35 +133,34 @@ export const DriverComing: React.FC<DriverComingProps> = ({
   // effect deps (which would tear down and re-subscribe the listeners mid-flight).
   const driverInfoSetRef = useRef(false);
 
-  const finalDestination = isService 
-    ? orderData.destinationAddress 
-    : isFood 
-      ? orderData.destinationAddress 
-      : (orderData.destination || orderData.destinationLocation?.address || destination);
-  
-  const finalPickup = isService 
-    ? orderData.pickupAddress 
-    : isFood 
-      ? orderData.pickupAddress 
-      : (orderData.pickup || orderData.pickupLocation?.address || pickup);
-  
-  const finalStops = isService 
-    ? (orderData.stops || []) 
-    : isFood 
-      ? (orderData.stops || []) 
-      : (orderData.stops || stops);
-  
-  const finalCarType = isService 
-    ? orderData.vehicleClass 
-    : isFood 
-      ? orderData.deliveryMode?.label 
-      : (orderData.rideName || carType);
-  
-  const finalPrice = isService 
-    ? orderData.pricing?.basePrice 
-    : isFood 
-      ? orderData.totalPrice 
-    : (orderData.fare ?? orderData.total ?? price);
+  const liveOrder = firestoreRideData || {};
+  const finalDestination = isService
+    ? (liveOrder.destinationAddress ?? orderData.destinationAddress)
+    : isFood
+      ? (liveOrder.destinationAddress ?? orderData.destinationAddress)
+      : (liveOrder.destination ?? liveOrder.destinationLocation?.address ?? orderData.destination ?? orderData.destinationLocation?.address ?? destination);
+
+  const finalPickup = isService
+    ? (liveOrder.pickupAddress ?? orderData.pickupAddress)
+    : isFood
+      ? (liveOrder.pickupAddress ?? orderData.pickupAddress)
+      : (liveOrder.pickup ?? liveOrder.pickupLocation?.address ?? orderData.pickup ?? orderData.pickupLocation?.address ?? pickup);
+
+  const finalStops = isService || isFood
+    ? (liveOrder.stops ?? orderData.stops ?? [])
+    : (liveOrder.stops ?? orderData.stops ?? stops);
+
+  const finalCarType = isService
+    ? (liveOrder.vehicleClass ?? orderData.vehicleClass)
+    : isFood
+      ? (liveOrder.deliveryMode?.label ?? orderData.deliveryMode?.label)
+      : (liveOrder.rideName ?? liveOrder.carType ?? orderData.rideName ?? carType);
+
+  const finalPrice = isService
+    ? (liveOrder.pricing?.basePrice ?? liveOrder.basePrice ?? orderData.pricing?.basePrice)
+    : isFood
+      ? (liveOrder.totalPrice ?? liveOrder.total ?? orderData.totalPrice)
+      : (liveOrder.fare ?? liveOrder.total ?? orderData.fare ?? orderData.total ?? price);
   
   // Run once on mount to seed the polyline/ETA from the initial orderData so the
   // driver-to-pickup route draws immediately, before subscribeToOrder fires.
@@ -520,17 +519,18 @@ export const DriverComing: React.FC<DriverComingProps> = ({
 
     // Add stop markers
     const stops = finalStops || [];
-    stops.forEach((stop: any, index: number) => {
-      if (stop.lat && stop.lng) {
-        markers.push({
-          id: `stop-${index}`,
-          type: 'stop',
-          lat: stop.lat,
-          lng: stop.lng,
-          label: `${index + 1}`
-        });
-      }
-    });
+  stops.forEach((stop: any, index: number) => {
+    const location = stop?.geometry?.location || stop?.location || stop;
+    if (location?.lat != null && location?.lng != null) {
+      markers.push({
+        id: `stop-${index}`,
+        type: 'stop',
+        lat: Number(location.lat),
+        lng: Number(location.lng),
+        label: `${index + 1}`
+      });
+    }
+  });
     
     return markers;
   }, [finalStops]);
