@@ -23,6 +23,15 @@ import {
   OrderStatus
 } from '../services/orderService';
 
+const getAddressText = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'address' in value) {
+    const address = (value as { address?: unknown }).address;
+    return typeof address === 'string' ? address : '';
+  }
+  return '';
+};
+
 interface DriverComingProps {
   destination: string;
   pickup: string;
@@ -125,17 +134,13 @@ export const DriverComing: React.FC<DriverComingProps> = ({
   // effect deps (which would tear down and re-subscribe the listeners mid-flight).
   const driverInfoSetRef = useRef(false);
 
-  const finalDestination = isService 
-    ? orderData.destinationAddress 
-    : isFood 
-      ? orderData.destinationAddress 
-      : (orderData.destination || orderData.destinationLocation?.address || destination);
+  const finalDestination = getAddressText(isService || isFood
+    ? orderData.destinationAddress
+    : (orderData.destination || orderData.destinationLocation?.address || destination));
   
-  const finalPickup = isService 
-    ? orderData.pickupAddress 
-    : isFood 
-      ? orderData.pickupAddress 
-      : (orderData.pickup || orderData.pickupLocation?.address || pickup);
+  const finalPickup = getAddressText(isService || isFood
+    ? orderData.pickupAddress
+    : (orderData.pickup || orderData.pickupLocation?.address || pickup));
   
   const finalStops = isService 
     ? (firestoreRideData?.stops || orderData.stops || []) 
@@ -652,7 +657,7 @@ export const DriverComing: React.FC<DriverComingProps> = ({
                       {finalStops.length > 0 && finalStops.map((stop: any, index: number) => (
                         <div key={index} className="flex items-center space-x-3 ml-6">
                           <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                          <span className="flex-1 text-gray-700 dark:text-gray-300">{stop.address || stop}</span>
+                          <span className="flex-1 text-gray-700 dark:text-gray-300">{getAddressText(stop)}</span>
                         </div>
                       ))}
 

@@ -14,10 +14,25 @@ interface OrderItem {
   image?: string;
 }
 
+interface AddressValue {
+  address?: string;
+  lat?: number;
+  lng?: number;
+}
+
+const getAddressText = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'address' in value) {
+    const address = (value as AddressValue).address;
+    return typeof address === 'string' ? address : '';
+  }
+  return '';
+};
+
 interface OrderData {
   id?: string;
   storeName?: string;
-  storeAddress?: string;
+  storeAddress?: string | AddressValue;
   storeImage?: string;
   storeId?: string;
   items?: OrderItem[];
@@ -28,8 +43,8 @@ interface OrderData {
   rejectionReason?: 'still_closed' | 'out_of_stock' | string;
   driverStatus?: string;
   driverId?: string | null;
-  destinationAddress?: string;
-  stops?: Array<{ address: string; items?: OrderItem[] }>;
+  destinationAddress?: string | AddressValue;
+  stops?: Array<{ address: string | AddressValue; items?: OrderItem[] }>;
   type?: string;
   category?: string;
   refundEligible?: boolean;
@@ -655,7 +670,7 @@ export const OrderTrackingPage: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 dark:text-white text-sm">Delivery to</p>
-              <p className="text-gray-600 dark:text-gray-400 text-xs truncate">{orderData.destinationAddress || 'Address not specified'}</p>
+              <p className="text-gray-600 dark:text-gray-400 text-xs truncate">{getAddressText(orderData.destinationAddress) || 'Address not specified'}</p>
             </div>
           </div>
 
