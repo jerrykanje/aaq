@@ -588,16 +588,6 @@ export const OrderTrackingPage: React.FC = () => {
         >
           <div className="mb-2 flex items-center justify-between gap-3">
             <h2 className="font-bold text-gray-900 dark:text-white text-sm">Order Summary</h2>
-            {canCancelOrder && (
-              <button
-                type="button"
-                onClick={handleCancelRequest}
-                disabled={isCancelling}
-                className="text-xs font-medium text-gray-400 transition-colors hover:text-red-500 disabled:opacity-50"
-              >
-                Cancel order
-              </button>
-            )}
           </div>
           
           {/* Scrollable items list - only this scrolls */}
@@ -682,6 +672,17 @@ export const OrderTrackingPage: React.FC = () => {
                 </div>
               ))}
             </div>
+          )}
+
+          {canCancelOrder && (
+            <button
+              type="button"
+              onClick={handleCancelRequest}
+              disabled={isCancelling}
+              className="mt-4 w-full rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 active:bg-red-100 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
+            >
+              Cancel order
+            </button>
           )}
         </motion.div>
       </div>
