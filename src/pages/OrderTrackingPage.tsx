@@ -683,7 +683,7 @@ export const OrderTrackingPage: React.FC = () => {
                   <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-[10px] font-bold text-orange-600">{index + 1}</span>
                   </div>
-                  <p className="text-xs text-gray-600 truncate">{typeof stop === 'string' ? stop : stop.address}</p>
+                  <p className="text-xs text-gray-600 truncate">{getAddressText(stop) || 'Address not specified'}</p>
                 </div>
               ))}
             </div>

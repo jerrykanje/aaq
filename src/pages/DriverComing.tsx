@@ -698,10 +698,10 @@ export const DriverComing: React.FC<DriverComingProps> = ({
                         <Edit className="text-gray-400 dark:text-gray-500" size={16} />
                       </div>
 
-                      {finalStops.map((stop: string, index: number) => (
+                      {finalStops.map((stop: any, index: number) => (
                         <div key={index} className="flex items-center space-x-3 ml-6">
                           <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                          <span className="flex-1 text-gray-700 dark:text-gray-300">{stop}</span>
+                          <span className="flex-1 text-gray-700 dark:text-gray-300">{getAddressText(stop) || 'Address not specified'}</span>
                           <Edit className="text-gray-400 dark:text-gray-500" size={16} />
                         </div>
                       ))}
