@@ -84,10 +84,25 @@ interface DriverLocation {
   lng: number;
 }
 
+interface AddressValue {
+  address?: string;
+  lat?: number;
+  lng?: number;
+}
+
+const getAddressText = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'address' in value) {
+    const address = (value as AddressValue).address;
+    return typeof address === 'string' ? address : '';
+  }
+  return '';
+};
+
 interface OrderData {
   id?: string;
   storeName?: string;
-  storeAddress?: string;
+  storeAddress?: string | AddressValue;
   storeImage?: string;
   storeId?: string;
   items?: OrderItem[];
@@ -98,7 +113,7 @@ interface OrderData {
   driverStatus?: string;
   driverId?: string | null;
   driverLocation?: DriverLocation;
-  destinationAddress?: string;
+  destinationAddress?: string | AddressValue;
   destinationLocation?: { lat: number; lng: number };
   storeLocation?: { lat: number; lng: number };
   stops?: Array<{ address: string; items?: OrderItem[] }>;
@@ -672,7 +687,7 @@ export const LiveTrackingPage: React.FC = () => {
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Delivery Address</p>
               <p className="text-gray-900 dark:text-white text-sm mt-1">
-                {orderData.destinationAddress || 'Address not specified'}
+                {getAddressText(orderData.destinationAddress) || 'Address not specified'}
               </p>
             </div>
           </motion.div>
@@ -694,7 +709,7 @@ export const LiveTrackingPage: React.FC = () => {
                   <div className="w-6 h-6 bg-orange-200 dark:bg-orange-800 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-bold text-orange-700 dark:text-orange-300">{index + 1}</span>
                   </div>
-                  <p className="text-gray-700 dark:text-gray-300 text-sm">{stop.address || String(stop)}</p>
+                  <p className="text-gray-700 dark:text-gray-300 text-sm">{getAddressText(stop) || 'Address not specified'}</p>
                 </div>
               ))}
             </motion.div>
