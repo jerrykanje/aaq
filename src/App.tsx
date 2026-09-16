@@ -222,7 +222,7 @@ function AppContent({ userId }: { userId: string }) {
     localStorage.removeItem('currentRideId');
     setAppState(prev => ({ ...prev, currentRideId: null }));
     setRideStatus(null);
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   const handleSubmitRating = async (rating: number, feedback: string) => {

@@ -382,7 +382,7 @@ export function FoodiesRoute() {
     localStorage.setItem('FOODIES_ROUTE_DATA', JSON.stringify(routeData));
     console.log('📦 Saved route data to localStorage:', routeData);
 
-    navigate('/food-delivery');
+    navigate('/food-delivery', { replace: true });
   };
 
   const pickupLocation = cart[0]?.storeName || 'Store';
