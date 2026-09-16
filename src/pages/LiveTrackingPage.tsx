@@ -5,10 +5,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../config/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { RatingModal } from '../components/RatingModal';
+import { MessagePanel } from '../components/MessagePanel';
 import { MapLibreMap, MapMarker } from '../components/MapLibreMap';
 import { listenToDriverLocation } from '../services/trackingService';
 import { trimPolylineFromPosition } from '../utils/polylineUtils';
 import { useGlobalCart } from '../contexts/GlobalCartContext';
+import { useMessageContext } from '../contexts/MessageContext';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { auth } from '../config/firebase';
 import { soundManager } from '../utils/notificationSound';
 
 interface OrderItem {
@@ -139,8 +143,11 @@ export const LiveTrackingPage: React.FC = () => {
   const location = useLocation();
   const { orderId, orderData: initialOrderData } = location.state || {};
   const { clearCart } = useGlobalCart();
+  const { profile } = useUserProfile(auth.currentUser?.uid);
+  const { unreadMessageCount, markMessagesAsRead } = useMessageContext();
 
   const [orderData, setOrderData] = useState<OrderData>(initialOrderData || {});
+  const [isMessagePanelOpen, setIsMessagePanelOpen] = useState(false);
   const [driverData, setDriverData] = useState<DriverData | null>(null);
   const [isDriverLoading, setIsDriverLoading] = useState<boolean>(true);
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
@@ -419,9 +426,9 @@ export const LiveTrackingPage: React.FC = () => {
     }
   };
 
-  const handleMessage = () => {
-    // Navigate to message panel or open messaging
-    console.log('Open messaging');
+  const handleMessage = async () => {
+    setIsMessagePanelOpen(true);
+    await markMessagesAsRead();
   };
 
   // Build map markers for store, destination, driver, and stops
@@ -604,9 +611,18 @@ export const LiveTrackingPage: React.FC = () => {
                     whileTap={{ scale: 0.9 }}
                     whileHover={{ scale: 1.05 }}
                     onClick={handleMessage}
-                    className="w-11 h-11 bg-gray-800 dark:bg-gray-700 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors"
+                    className="relative w-11 h-11 bg-gray-800 dark:bg-gray-700 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors"
                   >
                     <MessageCircle size={20} className="text-white" />
+                    {unreadMessageCount > 0 && (
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-lg"
+                      >
+                        {unreadMessageCount}
+                      </motion.span>
+                    )}
                   </motion.button>
                 </div>
               </motion.div>
@@ -687,6 +703,17 @@ export const LiveTrackingPage: React.FC = () => {
       </motion.div>
 
       {/* Rating Modal - shown when status becomes "completed" */}
+      <MessagePanel
+        isOpen={isMessagePanelOpen}
+        onClose={() => setIsMessagePanelOpen(false)}
+        rideId={orderId || ''}
+        currentUserId={auth.currentUser?.uid || profile?.id || ''}
+        currentUserName={profile?.name || 'Client'}
+        driverId={driverData?.id || orderData.driverId || ''}
+        driverName={driverData?.name || 'Driver'}
+        isRideActive
+      />
+
       <RatingModal
         isOpen={showRatingModal}
         onClose={() => {

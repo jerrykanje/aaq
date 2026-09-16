@@ -4,6 +4,7 @@ import { X, Plus, Clock, Navigation, Search, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MapLibreMap, MapMarker } from '../components/MapLibreMap';
 import { ScrollableSection } from '../components/ScrollableSection';
+import { apiPost } from '../config/api';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { 
   searchAddresses, 
@@ -25,6 +26,12 @@ export const YourRoute: React.FC<YourRouteProps> = ({ onRouteComplete }) => {
   const { address: currentLocation, loading: locationLoading, latitude: geoLat, longitude: geoLng } = useGeolocation();
 
   const serviceType: ServiceType = location.state?.serviceType || 'ride';
+  const editMode = location.state?.editMode === true;
+  const returnTo: string | undefined = location.state?.returnTo;
+  const editOrderId: string | undefined = location.state?.orderId;
+  const editOrderType: string | undefined = location.state?.orderType;
+  const editDriverId: string | null = location.state?.driverId || null;
+  const editOrderData: any = location.state?.orderData || {};
 
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
@@ -39,6 +46,7 @@ export const YourRoute: React.FC<YourRouteProps> = ({ onRouteComplete }) => {
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [stopCoords, setStopCoords] = useState<({ lat: number; lng: number } | null)[]>([]);
+  const [isSavingStop, setIsSavingStop] = useState(false);
 
   // Track whether we've already auto-filled pickup from GPS so we never refill
   // it after the user clears it.
@@ -51,6 +59,33 @@ export const YourRoute: React.FC<YourRouteProps> = ({ onRouteComplete }) => {
   // Load recent addresses on mount
   useEffect(() => {
     setSuggestions(getRecentAddresses());
+  }, []);
+
+  useEffect(() => {
+    if (!editMode) return;
+    const state = location.state || {};
+    if (state.pickup) setPickup(state.pickup);
+    if (state.destination) setDestination(state.destination);
+    if (Array.isArray(state.stops)) setStops(state.stops);
+    if (state.pickupCoords) setPickupCoords(state.pickupCoords);
+    if (state.destinationCoords) setDestinationCoords(state.destinationCoords);
+    if (Array.isArray(state.stopCoords)) setStopCoords(state.stopCoords);
+    setHasAutoFilledPickup(true);
+    setStops((previous) => {
+      const base = Array.isArray(state.stops) ? state.stops : previous;
+      if (base.length >= 3) {
+        setActiveField(base.length - 1);
+        return base;
+      }
+      setActiveField(base.length);
+      return [...base, ''];
+    });
+    setStopCoords((previous) => {
+      const base = Array.isArray(state.stopCoords) ? state.stopCoords : previous;
+      return base.length >= 3 ? base : [...base, null];
+    });
+    setSearchQuery('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-fill the pick-up box with the device's current address.
@@ -218,6 +253,49 @@ export const YourRoute: React.FC<YourRouteProps> = ({ onRouteComplete }) => {
     }
   };
 
+  const handleEditModeComplete = async (
+    finalPickup: string,
+    finalDestination: string,
+    finalStops: string[],
+    finalPickupCoords: { lat: number; lng: number } | null,
+    finalDestinationCoords: { lat: number; lng: number } | null,
+    finalStopCoords: ({ lat: number; lng: number } | null)[]
+  ) => {
+    if (!editOrderId || isSavingStop) return;
+    setIsSavingStop(true);
+    const stopsPayload = finalStops.map((address, index) => ({
+      address,
+      lat: finalStopCoords[index]?.lat ?? 0,
+      lng: finalStopCoords[index]?.lng ?? 0
+    }));
+
+    void apiPost('/updateOrderStops', {
+      orderId: editOrderId,
+      driverId: editDriverId,
+      stops: stopsPayload
+    }).then((result: any) => {
+      navigate(returnTo === 'driver-coming' ? '/driver-coming' : -1 as any, {
+        state: {
+          orderId: editOrderId,
+          orderType: editOrderType,
+          orderData: {
+            ...editOrderData,
+            pickup: finalPickup,
+            destination: finalDestination,
+            stops: result?.data?.stops ?? stopsPayload,
+            fare: result?.data?.fare ?? editOrderData.fare,
+            total: result?.data?.fare ?? editOrderData.total,
+            polyline: result?.data?.polyline ?? editOrderData.polyline
+          }
+        }
+      });
+    }).catch((error) => {
+      console.error('Failed to update trip stops:', error);
+    }).finally(() => {
+      setIsSavingStop(false);
+    });
+  };
+
   const handleSuggestionSelect = (suggestion: GeoapifyAddress) => {
     const address = suggestion.address;
     const coords = suggestion.coords;
@@ -281,6 +359,8 @@ export const YourRoute: React.FC<YourRouteProps> = ({ onRouteComplete }) => {
       } else {
         setSearchQuery(newStops[nextField] || '');
       }
+    } else if (checkFieldsFilled() && editMode) {
+      void handleEditModeComplete(newPickup, newDestination, newStops, newPickupCoords, newDestinationCoords, newStopCoords);
     } else if (checkFieldsFilled() && (serviceType === 'ride' || serviceType === 'package' || serviceType === 'truck')) {
       onRouteComplete?.(newPickup, newDestination, newStops);
       navigate('/select-ride', {

@@ -138,10 +138,10 @@ export const DriverComing: React.FC<DriverComingProps> = ({
       : (orderData.pickup || orderData.pickupLocation?.address || pickup);
   
   const finalStops = isService 
-    ? (orderData.stops || []) 
+    ? (firestoreRideData?.stops || orderData.stops || []) 
     : isFood 
-      ? (orderData.stops || []) 
-      : (orderData.stops || stops);
+      ? (firestoreRideData?.stops || orderData.stops || []) 
+      : (firestoreRideData?.stops || orderData.stops || stops);
   
   const finalCarType = isService 
     ? orderData.vehicleClass 
@@ -153,7 +153,7 @@ export const DriverComing: React.FC<DriverComingProps> = ({
     ? orderData.pricing?.basePrice 
     : isFood 
       ? orderData.totalPrice 
-    : (orderData.fare ?? orderData.total ?? price);
+    : (firestoreRideData?.fare ?? orderData.fare ?? orderData.total ?? price);
   
   // Run once on mount to seed the polyline/ETA from the initial orderData so the
   // driver-to-pickup route draws immediately, before subscribeToOrder fires.
@@ -360,6 +360,26 @@ export const DriverComing: React.FC<DriverComingProps> = ({
   const handleMessageDriver = async () => {
     setIsMessagePanelOpen(true);
     await markMessagesAsRead();
+  };
+
+  const handleOpenAddStop = () => {
+    navigate('/your-route', {
+      state: {
+        serviceType: 'ride',
+        editMode: true,
+        returnTo: 'driver-coming',
+        orderId,
+        orderType,
+        pickup: finalPickup,
+        destination: finalDestination,
+        stops: (finalStops || []).map((stop: any) => typeof stop === 'string' ? stop : stop.address || ''),
+        stopCoords: (finalStops || []).map((stop: any) => stop && typeof stop === 'object' && stop.lat && stop.lng ? { lat: stop.lat, lng: stop.lng } : null),
+        pickupCoords: orderData.pickupCoords || (orderData.pickupLat && orderData.pickupLng ? { lat: orderData.pickupLat, lng: orderData.pickupLng } : null),
+        destinationCoords: orderData.destinationCoords || (orderData.dropLat && orderData.dropLng ? { lat: orderData.dropLat, lng: orderData.dropLng } : null),
+        driverId: firestoreRideData?.driverId || orderData.driverId || null,
+        orderData
+      }
+    });
   };
 
   const handleCancelClick = () => setShowCancelConfirmation(true);
@@ -681,10 +701,16 @@ export const DriverComing: React.FC<DriverComingProps> = ({
                         </div>
                       ))}
 
-                      <div className="flex items-center space-x-3 ml-6">
-                        <Plus className="text-[#5B2EFF]" size={16} />
-                        <span className="text-[#5B2EFF] font-medium">Add stop</span>
-                      </div>
+                      {rideStatus !== 'arrived' && rideStatus !== 'in_progress' && rideStatus !== 'started' && (
+                        <button
+                          type="button"
+                          onClick={handleOpenAddStop}
+                          className="flex items-center space-x-3 ml-6 w-full text-left"
+                        >
+                          <Plus className="text-[#5B2EFF]" size={16} />
+                          <span className="text-[#5B2EFF] font-medium">Add stop</span>
+                        </button>
+                      )}
 
                       <div className="flex items-center space-x-3">
                         <MapPin className="text-[#5B2EFF]" size={12} />
