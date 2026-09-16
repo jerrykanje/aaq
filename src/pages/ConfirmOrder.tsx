@@ -27,6 +27,15 @@ interface RideData {
   selectedVehicle?: string;
 }
 
+const getAddressText = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && 'address' in value) {
+    const address = (value as { address?: unknown }).address;
+    return typeof address === 'string' ? address : '';
+  }
+  return '';
+};
+
 interface ConfirmOrderProps {
   destination: string;
   pickup: string;
@@ -111,7 +120,14 @@ export const ConfirmOrder: React.FC<ConfirmOrderProps> = ({
         ? pickupAddress 
         : pickup;
         
-  const finalStops = isStoreDelivery ? (orderData.stops || []) : stops;
+  const finalDestinationText = getAddressText(finalDestination);
+  const finalPickupText = getAddressText(finalPickup);
+  const finalStops = isStoreDelivery
+    ? (orderData.stops || []).map((stop: any) => ({
+        ...stop,
+        address: getAddressText(stop?.address ?? stop),
+      }))
+    : stops.map((stop) => getAddressText(stop));
 
   const getServiceLabel = () => {
     if (serviceType === 'package') return 'Package Delivery';
@@ -515,14 +531,14 @@ export const ConfirmOrder: React.FC<ConfirmOrderProps> = ({
                     <div className="w-3 h-3 bg-[#5B2EFF] rounded-full mt-1 flex-shrink-0"></div>
                     <div>
                       <span className="text-gray-500 dark:text-gray-400 text-xs">Pickup</span>
-                      <p className="text-gray-900 dark:text-white font-medium">{pickupAddress || finalPickup || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white font-medium">{getAddressText(pickupAddress) || finalPickupText || 'Not specified'}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-3 h-3 bg-[#5B2EFF] rounded-full mt-1 flex-shrink-0"></div>
                     <div>
                       <span className="text-gray-500 dark:text-gray-400 text-xs">Destination</span>
-                      <p className="text-gray-900 dark:text-white font-medium">{destinationAddress || finalDestination || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white font-medium">{getAddressText(destinationAddress) || finalDestinationText || 'Not specified'}</p>
                     </div>
                   </div>
                 </div>
@@ -566,14 +582,14 @@ export const ConfirmOrder: React.FC<ConfirmOrderProps> = ({
                     <div className="w-3 h-3 bg-[#5B2EFF] rounded-full mt-1 flex-shrink-0"></div>
                     <div>
                       <span className="text-gray-500 dark:text-gray-400 text-xs">Pickup</span>
-                      <p className="text-gray-900 dark:text-white font-medium">{finalPickup || 'Store'}</p>
+                      <p className="text-gray-900 dark:text-white font-medium">{finalPickupText || 'Store'}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-3 h-3 bg-[#5B2EFF] rounded-full mt-1 flex-shrink-0"></div>
                     <div>
                       <span className="text-gray-500 dark:text-gray-400 text-xs">Destination</span>
-                      <p className="text-gray-900 dark:text-white font-medium">{finalDestination || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white font-medium">{finalDestinationText || 'Not specified'}</p>
                     </div>
                   </div>
                 </div>
@@ -634,7 +650,7 @@ export const ConfirmOrder: React.FC<ConfirmOrderProps> = ({
                     <div className="w-3 h-3 bg-[#5B2EFF] rounded-full mt-1 flex-shrink-0"></div>
                     <div>
                       <span className="text-gray-500 dark:text-gray-400 text-xs">Pickup</span>
-                      <p className="text-gray-900 dark:text-white font-medium">{finalPickup}</p>
+                      <p className="text-gray-900 dark:text-white font-medium">{finalPickupText}</p>
                     </div>
                   </div>
                   {finalStops.length > 0 && finalStops.map((stop: string, idx: number) => (
@@ -650,7 +666,7 @@ export const ConfirmOrder: React.FC<ConfirmOrderProps> = ({
                     <div className="w-3 h-3 bg-[#5B2EFF] rounded-full mt-1 flex-shrink-0"></div>
                     <div>
                       <span className="text-gray-500 dark:text-gray-400 text-xs">Destination</span>
-                      <p className="text-gray-900 dark:text-white font-medium">{finalDestination}</p>
+                      <p className="text-gray-900 dark:text-white font-medium">{finalDestinationText}</p>
                     </div>
                   </div>
                 </div>
