@@ -31,6 +31,11 @@ interface OrderData {
   destinationAddress?: string;
   stops?: Array<{ address: string; items?: OrderItem[] }>;
   type?: string;
+  category?: string;
+  refundEligible?: boolean;
+  refundAmount?: number;
+  cancellationReason?: string;
+  cancelledAt?: unknown;
 }
 
 // Status steps for the UI timeline
@@ -161,6 +166,7 @@ export const OrderTrackingPage: React.FC = () => {
   const [messageIndex, setMessageIndex] = useState(0);
   const [showCancelReasons, setShowCancelReasons] = useState(false);
   const [showFeeConfirmation, setShowFeeConfirmation] = useState(false);
+  const [selectedCancellationReason, setSelectedCancellationReason] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   
   // Refs for timeouts
@@ -355,17 +361,19 @@ export const OrderTrackingPage: React.FC = () => {
     visible: { opacity: 1, x: 0 },
   };
 
-  const canCancelOrder = !['arriving', 'arrived', 'in_progress', 'completed', 'cancelled'].includes(orderData.status || '') && orderData.status !== 'driver_assigned';
-  const cancellationFeeApplies = ['accepted', 'preparing', 'ready_for_pickup'].includes(orderData.status || '') || orderData.driverStatus === 'assigned';
-  const category = orderData.type || 'food';
+  const canCancelOrder = !orderData.driverId && !['assigned', 'at_store', 'picked_up'].includes(orderData.driverStatus || '') && ['pending', 'accepted', 'preparing', 'ready_for_pickup'].includes(orderData.status || '');
+  const cancellationFeeApplies = ['accepted', 'preparing', 'ready_for_pickup'].includes(orderData.status || '');
+  const category = String(orderData.category || orderData.type || 'food').toLowerCase();
+  const normalizedCategory = category === 'clothes' || category === 'hardware' ? category : 'food';
 
   const handleCancelRequest = () => {
     if (!canCancelOrder || isCancelling) return;
+    setSelectedCancellationReason(null);
     setShowCancelReasons(true);
   };
 
-  const handleCancelOrder = async (reason: string) => {
-    if (!orderId || isCancelling) return;
+  const handleCancelOrder = async () => {
+    if (!orderId || !selectedCancellationReason || isCancelling) return;
     if (cancellationFeeApplies && !showFeeConfirmation) {
       setShowCancelReasons(false);
       setShowFeeConfirmation(true);
@@ -374,15 +382,19 @@ export const OrderTrackingPage: React.FC = () => {
 
     setIsCancelling(true);
     try {
+      const subtotal = orderData.subtotal || 0;
+      const fee = orderData.fee || 0;
       await updateDoc(doc(db, 'orders', orderId), {
-        status: 'cancelled',
-        cancellationReason: reason,
-        cancellationFee: cancellationFeeApplies ? orderData.fee || 0 : 0,
-        refundAmount: cancellationFeeApplies ? Math.max(0, (orderData.total || 0) - (orderData.fee || 0)) : orderData.total || 0,
+        status: cancellationFeeApplies ? 'cancelled_pending_refund' : 'cancelled',
+        cancellationReason: selectedCancellationReason,
+        refundEligible: true,
+        refundAmount: cancellationFeeApplies ? subtotal : subtotal + fee,
         cancelledAt: serverTimestamp(),
       });
+      setShowCancelReasons(false);
+      setShowFeeConfirmation(false);
       clearCart();
-      navigate('/shop', { state: { category }, replace: true });
+      navigate('/shop', { state: { category: normalizedCategory }, replace: true });
     } catch (error) {
       console.error('Failed to cancel order:', error);
       setIsCancelling(false);
@@ -680,7 +692,7 @@ export const OrderTrackingPage: React.FC = () => {
             <motion.button
               type="button"
               aria-label="Close cancellation dialog"
-              className="fixed inset-0 z-30 bg-black/40"
+              className="fixed inset-0 z-40 bg-black/40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -690,7 +702,7 @@ export const OrderTrackingPage: React.FC = () => {
               role="dialog"
               aria-modal="true"
               aria-labelledby="cancel-order-title"
-              className="fixed inset-x-0 bottom-0 z-40 rounded-t-3xl bg-white p-5 pb-8 shadow-2xl dark:bg-gray-900"
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-3xl bg-white p-5 pb-8 shadow-2xl dark:bg-gray-900"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -704,7 +716,7 @@ export const OrderTrackingPage: React.FC = () => {
                   </p>
                   <div className="mt-5 flex gap-3">
                     <button type="button" onClick={() => setShowFeeConfirmation(false)} className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200">Keep order</button>
-                    <button type="button" disabled={isCancelling} onClick={() => handleCancelOrder('Customer cancelled after preparation started')} className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">Cancel order</button>
+                    <button type="button" disabled={isCancelling} onClick={handleCancelOrder} className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">Cancel order</button>
                   </div>
                 </>
               ) : (
@@ -712,10 +724,26 @@ export const OrderTrackingPage: React.FC = () => {
                   <h2 id="cancel-order-title" className="text-lg font-bold text-gray-900 dark:text-white">Why are you cancelling?</h2>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Choose a reason so we can improve your experience.</p>
                   <div className="mt-4 flex flex-col gap-2">
-                    {['Changed my mind', 'Delivery address is incorrect', 'Order is taking too long', 'Other reason'].map((reason) => (
-                      <button key={reason} type="button" onClick={() => handleCancelOrder(reason)} className="rounded-xl border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-800 transition-colors hover:border-[#5B2EFF] hover:bg-[#F3EEFF] dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800">{reason}</button>
+                    {['Order is taking too long', 'Ordered by mistake', 'Changed my mind', 'Found it cheaper elsewhere', 'Entered the wrong address', 'Other'].map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        aria-pressed={selectedCancellationReason === reason}
+                        onClick={() => setSelectedCancellationReason(reason)}
+                        className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${selectedCancellationReason === reason ? 'border-[#5B2EFF] bg-[#F3EEFF] text-[#5B2EFF]' : 'border-gray-200 text-gray-800 hover:border-[#5B2EFF] hover:bg-[#F3EEFF] dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800'}`}
+                      >
+                        {reason}
+                      </button>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    disabled={!selectedCancellationReason || isCancelling}
+                    onClick={handleCancelOrder}
+                    className="mt-5 w-full rounded-xl bg-[#5B2EFF] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Done
+                  </button>
                 </>
               )}
             </motion.section>
