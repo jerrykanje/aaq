@@ -513,7 +513,10 @@ export const MapLibreMap: React.FC<MapLibreMapProps> = ({
         // its ETA bubble visible instead of hidden behind the panel.
         map.current.fitBounds(bounds, {
           padding: { top: 120, bottom: 380, left: 80, right: 80 },
-          maxZoom: 15
+          maxZoom: 15,
+          duration: 1400,
+          easing: (t) => t * (2 - t),
+          essential: true
         });
       }
     } catch (error) {
