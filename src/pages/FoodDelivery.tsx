@@ -302,6 +302,11 @@ export function FoodDelivery() {
   }, [isScrolledToTop]);
 
   const handleClose = () => {
+    const updatedData = {
+      ...routeData,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('FOODIES_ROUTE_DATA', JSON.stringify(updatedData));
     navigate(-1);
   };
 
@@ -315,6 +320,11 @@ export function FoodDelivery() {
   };
 
   const handleAddressClick = () => {
+    const updatedData = {
+      ...routeData,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('FOODIES_ROUTE_DATA', JSON.stringify(updatedData));
     navigate(-1);
   };
 

@@ -448,8 +448,8 @@ export const MapLibreMap: React.FC<MapLibreMapProps> = ({
       // the map, so reserve extra space at the bottom to keep the route + the
       // pickup ETA bubble (start of the polyline) within the visible area.
       map.current.fitBounds(bounds, {
-        padding: { top: 120, bottom: 380, left: 80, right: 80 },
-        maxZoom: 15,
+        padding: { top: 100, bottom: 220, left: 60, right: 60 },
+        maxZoom: 17,
         duration: 1400,
         easing: (t) => t * (2 - t),
         essential: true
