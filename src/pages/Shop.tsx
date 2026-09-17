@@ -5,6 +5,7 @@ import { ArrowLeft, Search, Star, ChevronRight } from 'lucide-react';
 import { Store, StoreCategory } from '../data/storesData';
 import { fetchStoresByCategory, isStoreOpen } from '../services/storeService';
 import { haversineDistanceKm, estimateTravelTimeMinutes } from '../utils/geoUtils';
+import { useGeolocation } from '../hooks/useGeolocation';
 
 // Store enriched with live distance + travel-time relative to the user's location
 interface StoreWithDistance extends Store {
@@ -50,31 +51,13 @@ export const Shop: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const { latitude, longitude } = useGeolocation();
+  const userLocation = latitude != null && longitude != null
+    ? { lat: latitude, lng: longitude }
+    : null;
   
   // Get category from navigation state, default to 'food'
   const category: StoreCategory = (location.state?.category as StoreCategory) || 'food';
-
-  // Request the user's current GPS location and keep it updated as they move
-  useEffect(() => {
-    if (!('geolocation' in navigator)) return;
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-      },
-      (error) => {
-        console.error('Error getting user location:', error);
-        setUserLocation(null);
-      },
-      { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 }
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
 
   // Fetch stores from Firestore
   useEffect(() => {

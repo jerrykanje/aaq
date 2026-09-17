@@ -154,11 +154,11 @@ export const DriverComing: React.FC<DriverComingProps> = ({
       ? orderData.deliveryMode?.label 
       : (orderData.rideName || carType);
   
-  const finalPrice = isService 
-    ? orderData.pricing?.basePrice 
-    : isFood 
-      ? orderData.totalPrice 
-    : (firestoreRideData?.fare ?? orderData.fare ?? orderData.total ?? price);
+  const finalPrice = isService
+    ? orderData.pricing?.basePrice
+    : isFood
+      ? (firestoreRideData?.total ?? orderData.totalPrice)
+      : (firestoreRideData?.total ?? orderData.total ?? price);
   
   // Run once on mount to seed the polyline/ETA from the initial orderData so the
   // driver-to-pickup route draws immediately, before subscribeToOrder fires.

@@ -5,6 +5,8 @@
  */
 
 import { safeJson } from '../config/api';
+import { auth, db } from '../config/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const GEOAPIFY_API_KEY = '8d0450d96b5748e89e46afaaf976f890';
 const GEOAPIFY_BASE_URL = 'https://api.geoapify.com/v1/geocode/autocomplete';
@@ -65,16 +67,43 @@ export const getRecentAddresses = (): GeoapifyAddress[] => {
 export const saveRecentAddress = (address: GeoapifyAddress): void => {
   try {
     const recent = getRecentAddresses();
-    // Remove if already exists (to move to top)
     const filtered = recent.filter(a => a.id !== address.id);
-    // Add to beginning
     filtered.unshift(address);
-    // Keep only max recent
     const trimmed = filtered.slice(0, MAX_RECENT_ADDRESSES);
     localStorage.setItem(RECENT_ADDRESSES_KEY, JSON.stringify(trimmed));
+
+    const user = auth.currentUser;
+    if (user) {
+      void setDoc(
+        doc(db, 'users', user.uid),
+        { recentAddresses: trimmed, updatedAt: Date.now() },
+        { merge: true }
+      ).catch(error => console.error('Error syncing recent addresses:', error));
+    }
   } catch (error) {
     console.error('Error saving recent address:', error);
   }
+};
+
+export const reconcileRecentAddresses = async (userId: string): Promise<GeoapifyAddress[]> => {
+  try {
+    const snapshot = await getDoc(doc(db, 'users', userId));
+    const remote = snapshot.data()?.recentAddresses;
+    if (Array.isArray(remote)) {
+      const local = getRecentAddresses();
+      const merged = [...remote, ...local].filter(
+        (address, index, addresses) => addresses.findIndex(item => item.id === address.id) === index
+      ).slice(0, MAX_RECENT_ADDRESSES);
+      localStorage.setItem(RECENT_ADDRESSES_KEY, JSON.stringify(merged));
+      if (JSON.stringify(merged) !== JSON.stringify(remote)) {
+        await setDoc(doc(db, 'users', userId), { recentAddresses: merged }, { merge: true });
+      }
+      return merged;
+    }
+  } catch (error) {
+    console.error('Error reconciling recent addresses:', error);
+  }
+  return getRecentAddresses();
 };
 
 /**
