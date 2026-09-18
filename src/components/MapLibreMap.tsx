@@ -512,8 +512,10 @@ export const MapLibreMap: React.FC<MapLibreMapProps> = ({
         // the lower half of the map — keeps the pickup end (polyline start) and
         // its ETA bubble visible instead of hidden behind the panel.
         map.current.fitBounds(bounds, {
-          padding: { top: 120, bottom: 380, left: 80, right: 80 },
-          maxZoom: 15,
+          // Keep the route close in frame rather than pulling the camera back
+          // for the covered bottom panel. The route itself is the focal point.
+          padding: { top: 56, bottom: 128, left: 40, right: 40 },
+          maxZoom: 17,
           duration: 1400,
           easing: (t) => t * (2 - t),
           essential: true
